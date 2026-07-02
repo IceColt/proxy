@@ -2,23 +2,36 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Macro Data</title>
+<title>Macro API Debug</title>
+
 <style>
-    body{
-        font-family: monospace;
-        background:#111;
-        color:#eee;
-        margin:20px;
-    }
-    pre{
-        white-space:pre-wrap;
-        word-break:break-word;
-    }
+body{
+    background:#111;
+    color:#eee;
+    font-family:Consolas,monospace;
+    margin:20px;
+}
+
+pre{
+    white-space:pre-wrap;
+    word-break:break-word;
+    border:1px solid #444;
+    padding:15px;
+    margin-bottom:30px;
+    background:#1a1a1a;
+}
+
+h2{
+    color:#6cf;
+}
 </style>
+
 </head>
 <body>
 
-<pre id="output">Chargement...</pre>
+<div id="results">
+Chargement...
+</div>
 
 <script>
 
@@ -29,82 +42,106 @@ const headers = {
     "Content-Type": "application/json"
 };
 
-(async () => {
+const endpoints = [
 
-    const output = document.getElementById("output");
+{
+    name:"Inflation",
+    url:`${base}/fed/v1/inflation?limit=24&sort=date.desc`
+},
 
-    try {
+{
+    name:"Labor Market",
+    url:`${base}/fed/v1/labor-market?limit=24&sort=date.desc`
+},
 
-        const responses = await Promise.all([
+{
+    name:"Treasury Yields",
+    url:`${base}/fed/v1/treasury-yields?limit=24&sort=date.desc`
+},
 
-            fetch(`${base}/fed/v1/inflation?limit=24&sort=date.desc`, { headers }),
+{
+    name:"Inflation Expectations",
+    url:`${base}/fed/v1/inflation-expectations?limit=24&sort=date.desc`
+},
 
-            fetch(`${base}/fed/v1/labor-market?limit=24&sort=date.desc`, { headers }),
+{
+    name:"Gold (XAUUSD)",
+    url:`${base}/v2/aggs/ticker/C:XAUUSD/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`
+},
 
-            fetch(`${base}/fed/v1/treasury-yields?limit=24&sort=date.desc`, { headers }),
+{
+    name:"Oil (USO)",
+    url:`${base}/v2/aggs/ticker/USO/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`
+},
 
-            fetch(`${base}/fed/v1/inflation-expectations?limit=24&sort=date.desc`, { headers }),
+{
+    name:"QQQ",
+    url:`${base}/v2/aggs/ticker/QQQ/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`
+}
 
-            fetch(`${base}/v2/aggs/ticker/C:XAUUSD/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`, { headers }),
+];
 
-            fetch(`${base}/v2/aggs/ticker/USO/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`, { headers }),
+(async ()=>{
 
-            fetch(`${base}/v2/aggs/ticker/QQQ/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`, { headers })
+const container=document.getElementById("results");
+container.innerHTML="";
 
-        ]);
+const responses=await Promise.allSettled(
 
-        const [
-            inflation,
-            laborMarket,
-            treasuryYields,
-            inflationExpectations,
-            gold,
-            oil,
-            qqq
-        ] = await Promise.all(responses.map(r => r.json()));
+    endpoints.map(async endpoint=>{
 
-        output.textContent = `
-========================
-INFLATION
-========================
-${JSON.stringify(inflation, null, 2)}
+        const response=await fetch(endpoint.url,{headers});
 
-========================
-LABOR MARKET
-========================
-${JSON.stringify(laborMarket, null, 2)}
+        const text=await response.text();
 
-========================
-TREASURY YIELDS
-========================
-${JSON.stringify(treasuryYields, null, 2)}
+        let content=text;
 
-========================
-INFLATION EXPECTATIONS
-========================
-${JSON.stringify(inflationExpectations, null, 2)}
+        try{
+            content=JSON.stringify(JSON.parse(text),null,2);
+        }
+        catch(e){
+            // Ce n'était pas du JSON, on garde le texte brut.
+        }
 
-========================
-GOLD (XAUUSD)
-========================
-${JSON.stringify(gold, null, 2)}
+        return{
+            name:endpoint.name,
+            status:response.status,
+            ok:response.ok,
+            url:endpoint.url,
+            content
+        };
 
-========================
-OIL (USO)
-========================
-${JSON.stringify(oil, null, 2)}
+    })
 
-========================
-QQQ
-========================
-${JSON.stringify(qqq, null, 2)}
+);
+
+responses.forEach(result=>{
+
+    if(result.status==="fulfilled"){
+
+        const r=result.value;
+
+        container.innerHTML+=`
+<h2>${r.name}</h2>
+
+<p>
+<b>Status :</b> ${r.status}<br>
+<b>URL :</b> ${r.url}
+</p>
+
+<pre>${r.content}</pre>
 `;
 
-    } catch (err) {
+    }else{
 
-        output.textContent = "Erreur :\n\n" + err;
+        container.innerHTML+=`
+<h2>Erreur</h2>
+<pre>${result.reason}</pre>
+`;
 
     }
+
+});
 
 })();
 
