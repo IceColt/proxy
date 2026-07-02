@@ -1,47 +1,27 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Macro Data Fetch</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #111;
-            color: #eee;
-            padding: 20px;
-        }
-
-        h1 {
-            margin-bottom: 20px;
-        }
-
-        button {
-            padding: 12px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
-        pre {
-            background: #222;
-            padding: 15px;
-            border-radius: 8px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Macro Data</title>
+<style>
+    body{
+        font-family: monospace;
+        background:#111;
+        color:#eee;
+        margin:20px;
+    }
+    pre{
+        white-space:pre-wrap;
+        word-break:break-word;
+    }
+</style>
 </head>
 <body>
 
-<h1>Macro API Fetch</h1>
-
-<button id="load">Charger les données</button>
-
-<pre id="output">Clique sur le bouton...</pre>
+<pre id="output">Chargement...</pre>
 
 <script>
+
 const base = "https://api.massive.com/";
 
 const headers = {
@@ -49,84 +29,85 @@ const headers = {
     "Content-Type": "application/json"
 };
 
-async function loadData() {
+(async () => {
 
     const output = document.getElementById("output");
-    output.textContent = "Chargement...";
 
     try {
 
         const responses = await Promise.all([
 
-            fetch(
-                `${base}/fed/v1/inflation?limit=24&sort=date.desc`,
-                { headers }
-            ),
+            fetch(`${base}/fed/v1/inflation?limit=24&sort=date.desc`, { headers }),
 
-            fetch(
-                `${base}/fed/v1/labor-market?limit=24&sort=date.desc`,
-                { headers }
-            ),
+            fetch(`${base}/fed/v1/labor-market?limit=24&sort=date.desc`, { headers }),
 
-            fetch(
-                `${base}/fed/v1/treasury-yields?limit=24&sort=date.desc`,
-                { headers }
-            ),
+            fetch(`${base}/fed/v1/treasury-yields?limit=24&sort=date.desc`, { headers }),
 
-            fetch(
-                `${base}/fed/v1/inflation-expectations?limit=24&sort=date.desc`,
-                { headers }
-            ),
+            fetch(`${base}/fed/v1/inflation-expectations?limit=24&sort=date.desc`, { headers }),
 
-            fetch(
-                `${base}/v2/aggs/ticker/C:XAUUSD/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`,
-                { headers }
-            ),
+            fetch(`${base}/v2/aggs/ticker/C:XAUUSD/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`, { headers }),
 
-            fetch(
-                `${base}/v2/aggs/ticker/USO/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`,
-                { headers }
-            ),
+            fetch(`${base}/v2/aggs/ticker/USO/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`, { headers }),
 
-            fetch(
-                `${base}/v2/aggs/ticker/QQQ/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`,
-                { headers }
-            )
+            fetch(`${base}/v2/aggs/ticker/QQQ/range/1/day/2025-11-03/2030-01-01?adjusted=true&sort=desc&limit=100`, { headers })
 
         ]);
 
-        const data = await Promise.all(
-            responses.map(async (res) => {
-                if (!res.ok) {
-                    throw new Error(`${res.url} → ${res.status}`);
-                }
-                return res.json();
-            })
-        );
+        const [
+            inflation,
+            laborMarket,
+            treasuryYields,
+            inflationExpectations,
+            gold,
+            oil,
+            qqq
+        ] = await Promise.all(responses.map(r => r.json()));
 
-        const result = {
-            inflation: data[0],
-            laborMarket: data[1],
-            treasuryYields: data[2],
-            inflationExpectations: data[3],
-            gold: data[4],
-            oil: data[5],
-            qqq: data[6]
-        };
+        output.textContent = `
+========================
+INFLATION
+========================
+${JSON.stringify(inflation, null, 2)}
 
-        console.log(result);
+========================
+LABOR MARKET
+========================
+${JSON.stringify(laborMarket, null, 2)}
 
-        output.textContent = JSON.stringify(result, null, 2);
+========================
+TREASURY YIELDS
+========================
+${JSON.stringify(treasuryYields, null, 2)}
+
+========================
+INFLATION EXPECTATIONS
+========================
+${JSON.stringify(inflationExpectations, null, 2)}
+
+========================
+GOLD (XAUUSD)
+========================
+${JSON.stringify(gold, null, 2)}
+
+========================
+OIL (USO)
+========================
+${JSON.stringify(oil, null, 2)}
+
+========================
+QQQ
+========================
+${JSON.stringify(qqq, null, 2)}
+`;
 
     } catch (err) {
 
-        console.error(err);
-        output.textContent = err.stack;
+        output.textContent = "Erreur :\n\n" + err;
 
     }
-}
 
-document.getElementById("load").addEventListener("click", loadData);
+})();
+
 </script>
 
 </body>
